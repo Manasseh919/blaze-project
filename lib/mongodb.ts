@@ -2,28 +2,28 @@ import mongoose from "mongoose"
 
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/auth-app"
 
-let cached = global.mongoose
-
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null }
+// Extend the global object with a mongoose cache
+declare global {
+  // eslint-disable-next-line no-var
+  var mongoose: { conn: mongoose.Connection | null; promise: Promise<mongoose.Connection> | null }
 }
 
+// Initialize cache if it doesn't exist
+global.mongoose = global.mongoose || { conn: null, promise: null }
+
 export async function connectToDatabase() {
-  if (cached.conn) {
-    return cached.conn
+  if (global.mongoose.conn) {
+    return global.mongoose.conn
   }
 
-  if (!cached.promise) {
+  if (!global.mongoose.promise) {
     const opts = {
       bufferCommands: false,
     }
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      return mongoose
-    })
+    global.mongoose.promise = mongoose.connect(MONGODB_URI, opts).then((m) => m.connection)
   }
 
-  cached.conn = await cached.promise
-  return cached.conn
+  global.mongoose.conn = await global.mongoose.promise
+  return global.mongoose.conn
 }
-
